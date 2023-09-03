@@ -3,7 +3,6 @@ package mayton.audio.serde;
 import mayton.audio.BitsPerSample;
 import mayton.audio.Channels;
 import mayton.audio.SamplingFrequency;
-import mayton.audio.serde.AudioWriter;
 import org.apache.commons.lang3.Validate;
 
 import java.io.IOException;
@@ -13,6 +12,14 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 public class WavWriter implements AudioWriter {
+
+    public enum WavFormat {
+        PCM(1);
+        public final int code;
+        WavFormat(int code) {
+            this.code = code;
+        }
+    }
 
     private OutputStream outputStream;
 
@@ -25,11 +32,11 @@ public class WavWriter implements AudioWriter {
     int samplesPerChunk;
     int channels;
 
-    public WavWriter(RandomAccessFile randomAccessFile, SamplingFrequency samplingFrequencyEnum, BitsPerSample bitsPerSampleEnum, Channels channelsEnum) throws IOException {
+    public WavWriter(RandomAccessFile randomAccessFile, SamplingFrequency samplingFrequencyEnum, BitsPerSample bitsPerSampleEnum) throws IOException {
         this.randomAccessFile = randomAccessFile;
         this.samplingFrequency = samplingFrequencyEnum.frequency;
         this.bitsPerSample = bitsPerSampleEnum.bits;
-        this.channels = channelsEnum.channels;
+        this.channels = 1; // TODO: In current implementation - always MONO.
         writeHeader();
     }
 
@@ -43,10 +50,17 @@ public class WavWriter implements AudioWriter {
         buffer.putInt(0x46_46_49_52); // RIFF
         int dataSize = 0x0; // Temporary!!!
         buffer.putInt(0x0); // Size of the overall file - 8 bytes, in bytes (32-bit integer). Typically, you’d fill this in after creation.
-        buffer.putInt(0x66_45_56_41); // WAVE
+
+        buffer.put((byte)'.');
+        buffer.put((byte)'W');
+        buffer.put((byte)'A');
+        buffer.put((byte)'V');
+
+        buffer.put((byte)'E');
         buffer.put((byte)'f');
         buffer.put((byte)'m');
         buffer.put((byte)'t');
+
         buffer.putShort((short) 16); // Length of format data as listed above ?
         buffer.putShort((short) 1);  // PCM
         buffer.putShort((short) channels);
@@ -72,9 +86,10 @@ public class WavWriter implements AudioWriter {
 
 
     @Override
-    public void writeBlock(double[] values, int channel) throws IOException {
-        Validate.isTrue(channel < channels);
+    public void writeBlock(double[] values) throws IOException, AudioWriterExeption {
         for (int i = 0; i < values.length; i++) {
+            double v = values[i];
+            if (v < 0.0 || v > 1.0) throw new AudioWriterExeption();
             randomAccessFile.writeShort((int) (32768.0 * values[i]));
         }
     }

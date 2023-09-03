@@ -16,7 +16,7 @@ import java.util.Map;
  * * 	    0 	    # 	    D 	941 Гц
  * 1209     1336    1477    1633
  */
-public class DTMF {
+public class DTMFSynthesizer {
 
     static final class DTMFKey {
         final int freq1;
